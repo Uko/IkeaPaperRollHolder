@@ -1,5 +1,5 @@
-use <threads.scad>;
-include <bezier_v2.scad>
+use <lib/threads.scad>;
+include <lib/bezier_v2.scad>
 
 $fn=360;
 
