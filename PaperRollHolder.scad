@@ -1,7 +1,9 @@
 use <lib/threads.scad>;
-include <lib/bezier_v2.scad>
+use <lib/bezier_v2.scad>
+use <lib/Knob.scad>
 
-$fn=360;
+
+$fn=40;
 
 thickness = 8;
 
@@ -15,9 +17,10 @@ bedThickness = 3;
 roundRad = 2;
 
 bracketWidth = 50;
-bracketHeight = 80;
+bracketHeight = 75;
+bracketTouchingHeight = 50;
 
-hightAboveSurface = 60;
+hightAboveSurface = 55;
 pivotDiameter = 25;
 pivotLength = 70;
 
@@ -28,30 +31,60 @@ screwCoreDiameter = screwDiameter - screwThreadSize - 0.7 ;
 
 bedWidth = bedThickness * 2 + jawWidth;
 
+module roundedCylinder(height, radius, roundness=5, fn = $fn) {
+
+oldfn = $fn;
+
+module torus() {
+    translate([0, 0, roundness])
+    rotate_extrude(convexity = 10, $fn = fn)
+    translate([radius-roundness, 0, 0])    
+    circle(r = roundness, $fn = oldfn);
+}
+
+hull() {
+torus();
+translate([0,0,height - roundness* 2])
+torus();
+}
+}
+
+module invRoundedCylinder(height, radius, roundness=5) {
+
+
+module torus() {
+    //translate([0, 0, roundness])
+    rotate_extrude(convexity = 10)
+    translate([radius, 0, 0])
+    difference() {
+        square(roundness);
+        translate([roundness,roundness])
+        circle(r = roundness);       
+    }
+}
+
+union() {
+    cylinder(height, r = radius);
+torus();
+translate([0,0,height ])
+mirror([0,0,1])
+torus();
+}
+}
+
 module vasalPlate(height, width1, width2) {
     
     function nonBezier(from, to) = [from,from,to,to];
-    
-    module halfVasalPlate() {
-        halfWidth1 = width1/2;
-        halfWidth2 = width2/2;
-        bezier_polygon([
-            nonBezier([0,   0],[0,  halfWidth1]),
-        
-            [[0,  halfWidth1],        [height / 2, halfWidth1],
-            [height / 2, halfWidth2], [height, halfWidth2]],
-     
-            nonBezier([height, halfWidth2],[height,  0]),
-        ]);
-    }
-    
-    
+
     linear_extrude(height = thickness) 
-    union() {
-        halfVasalPlate();
-        mirror([0,1,0])
-        halfVasalPlate();
-    }
+        bezier_polygon([
+            nonBezier([0,   0],[0,  width1]),
+        
+            [[0,  width1],        [height / 2, width1],
+            [height / 2, width2], [height, width2]],
+     
+            nonBezier([height, width2],[height,  0]),
+        ]);    
 }
 
 module cutcube(dimmentions, radius, variant) {
@@ -91,17 +124,31 @@ union() {
 
 // plate with thread
 difference() {
-    cube([bedWidth + thickness + bleed2, bracketWidth, thickness]);    
+    union() {
+        cube([bedWidth / 2  + thickness + bleed2, bracketWidth, thickness]);
+        translate([bedWidth / 2 + thickness + bleed, bracketWidth / 2, 0])
+            difference() {
+                cylinder(thickness, d1 = bracketWidth, d2 = bracketWidth);
+                translate([-bracketWidth / 2, -bracketWidth / 2, - bleed])
+                cube([bracketWidth / 2 + bleed, bracketWidth, thickness + bleed2]);
+            }
+    }
 
     translate([bedWidth / 2 + thickness + bleed, bracketWidth / 2, -bleed])
-        //cylinder(thickness + bleed2, screwDiameter/2, screwDiameter/2);
         scale([1.1,1.1,1])
         metric_thread(screwDiameter, screwThreadSize, thickness + bleed2, internal=true);
 }
 
+
+
 // side plate
 translate([0, 0, thickness])
-    cube([thickness,50,bracketHeight]);
+    cube([thickness, bracketWidth, bracketHeight - bracketTouchingHeight]);
+
+color("red")
+// thick side plate
+translate([0, 0, thickness + bracketHeight - bracketTouchingHeight])
+    cube([thickness + bedThickness + bleed, bracketWidth, bracketTouchingHeight]);
 
 
 // top plate
@@ -117,26 +164,28 @@ translate([0,0,bracketHeight + thickness])
             );
     }
 
-topBracketLevel = bracketHeight + thickness * 2;
+topBracketLevel = bracketHeight + thickness * 2 + jawDepth;
 
 color("red")
 // top side plate
-translate([thickness, bracketWidth / 2, topBracketLevel])
+translate([thickness, 0, topBracketLevel])
 rotate([0, -90, 0])
     vasalPlate(hightAboveSurface, bracketWidth, pivotDiameter, thickness);
 
 // pivot
-translate([0, bracketWidth / 2, topBracketLevel + hightAboveSurface])
+translate([0, pivotDiameter / 2, topBracketLevel + hightAboveSurface])
     rotate([0, 90, 0])
         cylinder(pivotLength + thickness, d1 = pivotDiameter, d2 = pivotDiameter);
 
 
 }
 
+
+
 translate([50, 110, 0])
 union() {
 metric_thread(screwDiameter, screwThreadSize, 35, leadin=1);
-cylinder(10, 22, 22, $fn=8);
+knob(10, 40, 5);
 translate([0,0,35])    
 cylinder(2, screwCoreDiameter/2, screwCoreDiameter/2);
 }
