@@ -2,27 +2,33 @@ use <lib/threads.scad>;
 use <lib/bezier_v2.scad>
 use <lib/Knob.scad>
 
+part = "all"; // [ "holder", "screw", "bed", "all" ]
 
-$fn=40;
+$fn=80;
 
 thickness = 8;
+baseThickness = 12;
 
-bleed = 1;
-bleed2 = bleed * 2;
 
-jawWidth = 20;
+
+ff = 0.001; // fudge factor
+ff2 = ff * 2;
+
+tol = 0.5; // tolerance
+
+jawWidth = 19.5;
 jawDepth = 5;
 
 bedThickness = 3;
 roundRad = 2;
 
-bracketWidth = 50;
+bracketWidth = 40;
 bracketHeight = 75;
 bracketTouchingHeight = 50;
 
 hightAboveSurface = 55;
 pivotDiameter = 25;
-pivotLength = 70;
+pivotLength = 60;
 
 screwDiameter = 23;
 screwThreadSize = 4;
@@ -31,61 +37,36 @@ screwCoreDiameter = screwDiameter - screwThreadSize - 0.7 ;
 
 bedWidth = bedThickness * 2 + jawWidth;
 
-module roundedCylinder(height, radius, roundness=5, fn = $fn) {
-
-oldfn = $fn;
-
-module torus() {
-    translate([0, 0, roundness])
-    rotate_extrude(convexity = 10, $fn = fn)
-    translate([radius-roundness, 0, 0])    
-    circle(r = roundness, $fn = oldfn);
-}
-
-hull() {
-torus();
-translate([0,0,height - roundness* 2])
-torus();
-}
-}
-
-module invRoundedCylinder(height, radius, roundness=5) {
-
-
-module torus() {
-    //translate([0, 0, roundness])
-    rotate_extrude(convexity = 10)
-    translate([radius, 0, 0])
-    difference() {
-        square(roundness);
-        translate([roundness,roundness])
-        circle(r = roundness);       
-    }
-}
-
-union() {
-    cylinder(height, r = radius);
-torus();
-translate([0,0,height ])
-mirror([0,0,1])
-torus();
-}
-}
 
 module vasalPlate(height, width1, width2) {
     
     function nonBezier(from, to) = [from,from,to,to];
-
-    linear_extrude(height = thickness) 
+    
+    module halfVasalPlate() {
+        halfWidth1 = width1/2;
+        halfWidth2 = width2/2;
         bezier_polygon([
-            nonBezier([0,   0],[0,  width1]),
+            nonBezier([0,   0],[0,  halfWidth1]),
         
-            [[0,  width1],        [height / 2, width1],
-            [height / 2, width2], [height, width2]],
+            [[0,  halfWidth1],        [height / 2, halfWidth1],
+            [height / 2, halfWidth2], [height, halfWidth2]],
      
-            nonBezier([height, width2],[height,  0]),
-        ]);    
+            nonBezier([height, halfWidth2],[height,  0]),
+        ]);
+    }
+    
+    
+    linear_extrude(height = thickness) 
+    union() {
+        halfVasalPlate();
+        mirror([0,1,0])
+        halfVasalPlate();
+    }
 }
+
+
+
+
 
 module cutcube(dimmentions, radius, variant) {
     x = dimmentions[0];
@@ -119,91 +100,141 @@ module cutcube(dimmentions, radius, variant) {
     }
 }
 
-
+module holder () {
+translate([bracketHeight,-bracketWidth/2,0])
+rotate([0,-90,0])
 union() {
 
-// plate with thread
+//# plate with thread    
+
 difference() {
+    threadCenter = bedWidth / 2 + thickness + tol;
     union() {
-        cube([bedWidth / 2  + thickness + bleed2, bracketWidth, thickness]);
-        translate([bedWidth / 2 + thickness + bleed, bracketWidth / 2, 0])
+        // ractangular part of base
+        cube([threadCenter, bracketWidth, baseThickness]);
+        // round part of base
+        translate([threadCenter, bracketWidth / 2, 0])
             difference() {
-                cylinder(thickness, d1 = bracketWidth, d2 = bracketWidth);
-                translate([-bracketWidth / 2, -bracketWidth / 2, - bleed])
-                cube([bracketWidth / 2 + bleed, bracketWidth, thickness + bleed2]);
+                cylinder(baseThickness, d = bracketWidth);
+                translate([-bracketWidth / 2, -bracketWidth / 2, -ff])
+                    cube([bracketWidth / 2, bracketWidth, thickness + ff2]);
             }
     }
 
-    translate([bedWidth / 2 + thickness + bleed, bracketWidth / 2, -bleed])
-        scale([1.1,1.1,1])
-        metric_thread(screwDiameter, screwThreadSize, thickness + bleed2, internal=true);
+    // thread cutout
+    translate([threadCenter, bracketWidth / 2, -ff])
+        //scale([1.1,1.1,1]) // <-- loose
+        scale([1.075,1.075,1])
+        metric_thread(screwDiameter, screwThreadSize, baseThickness + ff2, internal=true);
 }
 
 
 
 // side plate
-translate([0, 0, thickness])
+translate([0, 0, baseThickness])
     cube([thickness, bracketWidth, bracketHeight - bracketTouchingHeight]);
 
 color("red")
 // thick side plate
-translate([0, 0, thickness + bracketHeight - bracketTouchingHeight])
-    cube([thickness + bedThickness + bleed, bracketWidth, bracketTouchingHeight]);
+translate([0, 0, baseThickness + bracketHeight - bracketTouchingHeight])
+    cube([thickness + bedThickness + tol, bracketWidth, bracketTouchingHeight]);
 
 
 // top plate
-translate([0,0,bracketHeight + thickness])
+translate([0,0,bracketHeight + baseThickness])
     difference() {
-        cube([jawWidth + thickness * 2 + bedThickness + bleed, bracketWidth, thickness + jawDepth]);
+        cube([
+            thickness + tol + bedThickness + jawWidth + thickness,
+            bracketWidth,
+            thickness + jawDepth]);
         
-        translate([thickness + bedThickness + bleed, -bleed, -bleed])
+        //weird cutouts to support overhang printing with second bigger radius
+        translate([thickness + tol + bedThickness, -ff, -jawDepth - ff])
             cutcube(
-                [jawWidth, bracketWidth + bleed2, jawDepth + bleed],
+                [jawWidth*5/6, bracketWidth + ff2, jawDepth * 2 + ff],
                 roundRad,
                 "top"
             );
+    
+        //this is the second bigger radius
+        radiusExpansion = 1;
+        translate([
+            thickness + tol + bedThickness + jawWidth/3 + radiusExpansion,
+            -ff,
+            -jawDepth - ff])
+                cutcube(
+                    [jawWidth*2/3, bracketWidth + ff2, jawDepth * 2 + ff],
+                    jawDepth + radiusExpansion,
+                    "top"
+                );
     }
 
-topBracketLevel = bracketHeight + thickness * 2 + jawDepth;
+topBracketLevel = baseThickness + bracketHeight + jawDepth + thickness;
 
-color("red")
+
 // top side plate
-translate([thickness, 0, topBracketLevel])
+color("red")
+translate([thickness, bracketWidth/2, topBracketLevel])
+mirror([0,1,0])
 rotate([0, -90, 0])
     vasalPlate(hightAboveSurface, bracketWidth, pivotDiameter, thickness);
 
 // pivot
-translate([0, pivotDiameter / 2, topBracketLevel + hightAboveSurface])
+translate([0, bracketWidth/2, topBracketLevel + hightAboveSurface])
     rotate([0, 90, 0])
-        cylinder(pivotLength + thickness, d1 = pivotDiameter, d2 = pivotDiameter);
+        cylinder(pivotLength + thickness, d = pivotDiameter);
 
 
 }
+}
 
+module screw() {
 
-
-translate([50, 110, 0])
 union() {
-metric_thread(screwDiameter, screwThreadSize, 35, leadin=1);
-knob(10, 40, 5);
-translate([0,0,35])    
+metric_thread(screwDiameter, screwThreadSize, 32, leadin=1);
+knob(10, 35, 6);
+translate([0,0,32])    
 cylinder(2, screwCoreDiameter/2, screwCoreDiameter/2);
 }
+}
 
-
+module bed() {
 // bed
-translate([0, -100, 0])
+translate([ -jawWidth/2 - bedThickness, (jawDepth + bedThickness) / 2, 0])
+rotate([90,0,0])
 difference() {
     cube([jawWidth + bedThickness * 2, bracketWidth, jawDepth + bedThickness ]);    
     
-    translate([bedThickness, -bleed, bedThickness + bleed])
+    translate([bedThickness, -ff, bedThickness + ff])
             cutcube(
-                [jawWidth, bracketWidth + bleed2, jawDepth + bleed],
+                [jawWidth, bracketWidth + ff2, jawDepth + ff],
                 roundRad,
                 "bottom"
             );
-    translate([bedThickness + jawWidth / 2, bracketWidth / 2, -bleed])
-        cylinder(1 + bleed, (screwCoreDiameter+1)/2, (screwCoreDiameter+1)/2);
+    translate([bedThickness + jawWidth / 2, bracketWidth / 2, -ff])
+        cylinder(1 + ff, d=screwCoreDiameter+tol);
 
 }
 
+}
+
+
+module all() {
+   //translate([bracketHeight,-bracketWidth/2,0])
+    translate([0,-bracketWidth*2/3,0])
+        holder();
+    translate([bracketHeight/2,bracketWidth*2/3,0])
+        screw();
+    translate([-bracketHeight/2,bracketWidth*2/3,0])
+        bed();
+}
+
+if ((part == "holder") || (part == 1)) {
+    holder();
+} else if ((part == "screw") || (part == 2)) {
+    screw();
+} else if ((part == "bed") || (part == 3)) {
+    bed();
+} else {
+    all();
+}
