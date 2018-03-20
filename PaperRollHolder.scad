@@ -11,12 +11,12 @@ baseThickness = 12;
 
 
 
-ff = 0.001; // fudge factor
+ff = 0.005; // fudge factor
 ff2 = ff * 2;
 
 tol = 0.5; // tolerance
 
-jawWidth = 19.5;
+jawWidth = 19;
 jawDepth = 5;
 
 bedThickness = 3;
@@ -117,15 +117,13 @@ difference() {
             difference() {
                 cylinder(baseThickness, d = bracketWidth);
                 translate([-bracketWidth / 2, -bracketWidth / 2, -ff])
-                    cube([bracketWidth / 2, bracketWidth, thickness + ff2]);
+                    cube([bracketWidth / 2, bracketWidth, baseThickness + ff2]);
             }
     }
 
     // thread cutout
     translate([threadCenter, bracketWidth / 2, -ff])
-        //scale([1.1,1.1,1]) // <-- loose
-        scale([1.075,1.075,1])
-        metric_thread(screwDiameter, screwThreadSize, baseThickness + ff2, internal=true);
+        metric_thread(screwDiameter + tol*2, screwThreadSize, baseThickness + ff2, internal=true);
 }
 
 
@@ -157,14 +155,13 @@ translate([0,0,bracketHeight + baseThickness])
             );
     
         //this is the second bigger radius
-        radiusExpansion = 1;
         translate([
-            thickness + tol + bedThickness + jawWidth/3 + radiusExpansion,
+            thickness + tol + bedThickness + jawWidth/3,
             -ff,
             -jawDepth - ff])
                 cutcube(
                     [jawWidth*2/3, bracketWidth + ff2, jawDepth * 2 + ff],
-                    jawDepth + radiusExpansion,
+                    jawDepth,
                     "top"
                 );
     }
