@@ -5,13 +5,15 @@ use <lib/Knob.scad>
 part = "all"; // [ "holder", "screw", "bed", "all" ]
 
 $fn=80;
+align = "middle"; // [ "middle", "left", "right" ]
+
 
 thickness = 8;
 baseThickness = 12;
 
 
 
-ff = 0.005; // fudge factor
+ff = 0.01; // fudge factor
 ff2 = ff * 2;
 
 tol = 0.5; // tolerance
@@ -38,29 +40,33 @@ screwCoreDiameter = screwDiameter - screwThreadSize - 0.7 ;
 bedWidth = bedThickness * 2 + jawWidth;
 
 
-module vasalPlate(height, width1, width2) {
+module halfVasalPlate(height, width1, width2) {
     
     function nonBezier(from, to) = [from,from,to,to];
     
-    module halfVasalPlate() {
-        halfWidth1 = width1/2;
-        halfWidth2 = width2/2;
-        bezier_polygon([
-            nonBezier([0,   0],[0,  halfWidth1]),
-        
-            [[0,  halfWidth1],        [height / 2, halfWidth1],
-            [height / 2, halfWidth2], [height, halfWidth2]],
+    halfWidth1 = width1/2;
+    halfWidth2 = width2/2;
+    
+    linear_extrude(height = thickness)
+    bezier_polygon([
+        nonBezier([0,   0],[0,  width1]),
+    
+        [[0,  width1],        [height / 2, width1],
+        [height / 2, width2], [height, width2]],
+ 
+        nonBezier([height, width2],[height,  0]),
+    ]);
+}
+
+module vasalPlate(height, width1, width2) {
+    
+    halfWidth1 = width1/2;
+    halfWidth2 = width2/2;
      
-            nonBezier([height, halfWidth2],[height,  0]),
-        ]);
-    }
-    
-    
-    linear_extrude(height = thickness) 
     union() {
-        halfVasalPlate();
+        halfVasalPlate(height, halfWidth1, halfWidth2);
         mirror([0,1,0])
-        halfVasalPlate();
+        halfVasalPlate(height, halfWidth1, halfWidth2);
     }
 }
 
@@ -140,44 +146,66 @@ translate([0, 0, baseThickness + bracketHeight - bracketTouchingHeight])
 
 // top plate
 translate([0,0,bracketHeight + baseThickness])
+   
+
     difference() {
         cube([
             thickness + tol + bedThickness + jawWidth + thickness,
             bracketWidth,
             thickness + jawDepth]);
-        
-        //weird cutouts to support overhang printing with second bigger radius
-        translate([thickness + tol + bedThickness, -ff, -jawDepth - ff])
-            cutcube(
-                [jawWidth*5/6, bracketWidth + ff2, jawDepth * 2 + ff],
-                roundRad,
-                "top"
-            );
-    
-        //this is the second bigger radius
-        translate([
-            thickness + tol + bedThickness + jawWidth/3,
-            -ff,
-            -jawDepth - ff])
-                cutcube(
-                    [jawWidth*2/3, bracketWidth + ff2, jawDepth * 2 + ff],
-                    jawDepth,
-                    "top"
-                );
-    }
+        color("blue")
+        translate([thickness+tol+bedThickness,bracketWidth+ff,-ff])
+        rotate([90,0,0])
+        linear_extrude(bracketWidth+ff2)
+            union() {
+                
+                square([jawWidth-jawDepth,jawDepth-roundRad]);
+                translate([roundRad,jawDepth-roundRad])    
+                    square([jawWidth-jawDepth-roundRad,roundRad]);
+                
+                translate([roundRad,jawDepth-roundRad])    
+                intersection() {
+                    circle(r=roundRad);
+                    translate([-roundRad,0])
+                        square(roundRad);
+                }
+                
+                translate([jawWidth-jawDepth,0])    
+                intersection() {
+                    circle(r=jawDepth);
+                    square(jawDepth);
+                }
+                
+                translate([0,-ff])
+                    square([jawWidth,-ff]);
+            }
+}
 
-topBracketLevel = baseThickness + bracketHeight + jawDepth + thickness;
+topBracketLevel = baseThickness + bracketHeight + jawDepth + thickness - ff;
 
 
 // top side plate
 color("red")
 translate([thickness, bracketWidth/2, topBracketLevel])
-mirror([0,1,0])
 rotate([0, -90, 0])
-    vasalPlate(hightAboveSurface, bracketWidth, pivotDiameter, thickness);
+    if(align == "left")
+    {
+        translate([0, -bracketWidth/2, 0])
+        halfVasalPlate(hightAboveSurface, bracketWidth, pivotDiameter);
+    } else if(align == "right") {
+        translate([0, bracketWidth/2, 0])
+        mirror([0,1,0])
+        halfVasalPlate(hightAboveSurface, bracketWidth, pivotDiameter);
+    } else {    
+        vasalPlate(hightAboveSurface, bracketWidth, pivotDiameter);
+    }
 
 // pivot
-translate([0, bracketWidth/2, topBracketLevel + hightAboveSurface])
+pivotNudge = (align == "left") ? (pivotDiameter-bracketWidth)/2 : // left
+            ((align == "right") ? (bracketWidth-pivotDiameter)/2 : // right
+            0); // middle (or anything)
+    
+translate([0, bracketWidth/2 + pivotNudge, topBracketLevel + hightAboveSurface])
     rotate([0, 90, 0])
         cylinder(pivotLength + thickness, d = pivotDiameter);
 
