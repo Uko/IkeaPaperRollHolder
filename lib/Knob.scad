@@ -1,6 +1,8 @@
    
 module knob(height, diameter, numberOfArms = 6, roundingRadius = 2) {
     
+    ff = 0.001; //fudge factorZ
+    
     chordAngle = 180 / numberOfArms;
     halfChord = sin(chordAngle / 2) * diameter / 2;
     chordDistance = pow(diameter * diameter / 4 - halfChord * halfChord, 1/2);
@@ -30,18 +32,47 @@ module knob(height, diameter, numberOfArms = 6, roundingRadius = 2) {
         }            
     }
     
+    module hornedRect() {
+        union() {
+        
+            square([petalRadius,height]);
+     
+            translate([petalRadius, 0])
+                difference() {
+                    square(roundingRadius);
+                    translate([roundingRadius,roundingRadius])
+                        circle(roundingRadius);  
+                }
+            
+            translate([petalRadius, height - roundingRadius])
+                difference() {
+                    square(roundingRadius);
+                    translate([roundingRadius,0])
+                        circle(roundingRadius); 
+            
+                }
+                
+            // ff
+            translate([0, -ff])
+                square([petalRadius + roundingRadius,ff]);   
+            translate([0, height])
+                square([petalRadius + roundingRadius,ff]); 
+            
+        }            
+    }
+    
 
     module bump() {
-        rotate([0, 0, (360-petalAngle)/-2])
-            rotate_extrude(angle=360-petalAngle, convexity=10)
+        
+            rotate_extrude( convexity=10)
                 roundedRect();
     }
 
+
+    
     module dent() {
-        rotate([0, 0, 180-petalAngle/2])
-            rotate_extrude(angle=petalAngle, convexity=10)
-                translate([petalRadius * 2, 0])
-                    mirror([1,0]) roundedRect();
+            rotate_extrude(convexity=10)
+                    hornedRect();
     }
     
     module filling() {
@@ -55,18 +86,25 @@ module knob(height, diameter, numberOfArms = 6, roundingRadius = 2) {
         }
     }
     
-    
-    union() {
+    difference() {
+    union() { 
+        cylinder(height,r=chordDistance+petalDistance, $fn = numberOfArms*2);
+        
         for (i=[1:numberOfArms])
             rotate([0, 0, chordAngle * 2 * i])
                 translate([chordDistance+petalDistance, 0, 0])
                     bump();
-    
+    }
         for (i=[1:numberOfArms])
             rotate([0, 0, chordAngle * 2 * (i + 0.5)])
                 translate([chordDistance+petalDistance, 0, 0])
                     dent();
+        
+        
   
-        filling();
-    }
+        //filling();
+        
+        
+     }
 }
+
