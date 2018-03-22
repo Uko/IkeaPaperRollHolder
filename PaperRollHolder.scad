@@ -74,37 +74,7 @@ module vasalPlate(height, width1, width2) {
 
 
 
-module cutcube(dimmentions, radius, variant) {
-    x = dimmentions[0];
-    y = dimmentions[1];
-    z = dimmentions[2];
-    
-    
-    module helperCylinder() {
-        rotate([-90, 0, 0])
-        cylinder(y, radius, radius);
-    }
-    
-    hull() {
-        if ((variant == "bottom") || (!variant)) {
-            translate([radius, 0, radius])
-                helperCylinder();
-            translate([x - radius, 0, radius])
-                helperCylinder();
-        } else {
-            cube([x, y, z/2]);
-        }
-        if ((variant == "top") || (!variant)) {
-            translate([x - radius, 0, z - radius])
-                helperCylinder();
-            translate([radius, 0, z - radius])
-                helperCylinder();
-        } else {
-            translate([0,0,z/2])
-                cube([x, y, z/2]);
-        }
-    }
-}
+
 
 module holder () {
 translate([bracketHeight,-bracketWidth/2,0])
@@ -230,18 +200,33 @@ rotate([90,0,0])
 difference() {
     cube([jawWidth + bedThickness * 2, bracketWidth, jawDepth + bedThickness ]);    
     
-    translate([bedThickness, -ff, bedThickness + ff])
-            cutcube(
-                [jawWidth, bracketWidth + ff2, jawDepth + ff],
-                roundRad,
-                "bottom"
-            );
     translate([bedThickness + jawWidth / 2, bracketWidth / 2, -ff])
         cylinder(1 + ff, d=screwCoreDiameter+tol);
+    
+    translate([bedThickness, -ff, bedThickness+jawDepth])
+    rotate([-90,0,0]) 
+    linear_extrude(bracketWidth+ff2)
+        union() {
+            translate([roundRad,jawDepth-roundRad])
+                square([jawWidth - roundRad*2, roundRad]);
+            translate([0,-ff])
+                square([jawWidth, jawDepth - roundRad + ff]);
+            translate([roundRad,jawDepth-roundRad])
+                mirror([1,0])
+                intersection() {
+                    circle(r=roundRad);
+                    square(roundRad);
+                }
+            translate([jawWidth-roundRad,jawDepth-roundRad])
+                intersection() {
+                    circle(r=roundRad);
+                    square(roundRad);
+                }   
+        }
 
-}
+} }
 
-}
+
 
 
 module all() {
