@@ -4,7 +4,7 @@ use <lib/Knob.scad>
 
 part = "all"; // [ "holder", "screw", "bed", "all" ]
 
-$fn=80;
+$fs=0.8;
 align = "middle"; // [ "middle", "left", "right" ]
 
 
@@ -108,7 +108,6 @@ difference() {
 translate([0, 0, baseThickness])
     cube([thickness, bracketWidth, bracketHeight - bracketTouchingHeight]);
 
-color("red")
 // thick side plate
 translate([0, 0, baseThickness + bracketHeight - bracketTouchingHeight])
     cube([thickness + bedThickness + tol, bracketWidth, bracketTouchingHeight]);
@@ -123,7 +122,7 @@ translate([0,0,bracketHeight + baseThickness])
             thickness + tol + bedThickness + jawWidth + thickness,
             bracketWidth,
             thickness + jawDepth]);
-        color("blue")
+
         translate([thickness+tol+bedThickness,bracketWidth+ff,-ff])
         rotate([90,0,0])
         linear_extrude(bracketWidth+ff2)
@@ -155,7 +154,6 @@ topBracketLevel = baseThickness + bracketHeight + jawDepth + thickness - ff;
 
 
 // top side plate
-color("red")
 translate([thickness, bracketWidth/2, topBracketLevel])
 rotate([0, -90, 0])
     if(align == "left")
