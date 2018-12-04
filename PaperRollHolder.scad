@@ -29,7 +29,7 @@ bracketHeight = 75;
 bracketTouchingHeight = 50;
 
 hightAboveSurface = 55;
-pivotDiameter = 25;
+pivotDiameter = 20;
 pivotLength = 60;
 
 screwDiameter = 23;
@@ -185,7 +185,7 @@ module screw() {
 
 union() {
 metric_thread(screwDiameter, screwThreadSize, 32, leadin=1);
-knob(10, 35, 6);
+flowerKnob(10, 32, 6, 2, -1.5);
 translate([0,0,32])    
 cylinder(2, screwCoreDiameter/2, screwCoreDiameter/2);
 }
